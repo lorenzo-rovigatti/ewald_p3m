@@ -33,6 +33,8 @@ ELSE()
 	ADD_COMPILE_OPTIONS(-std=c++11)
 ENDIF()
 
+INCLUDE_DIRECTORIES( ${PROJECT_SOURCE_DIR}/extern )
+
 # get the current git revision, if git is installed. Avoid warnings if it isn't
 FIND_PACKAGE(Git)
 IF(Git_FOUND)
