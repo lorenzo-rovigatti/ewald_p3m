@@ -12,16 +12,22 @@
 
 #include <vector>
 
-class System {
+struct System {
 public:
-	System();
+	System(number my_box, int N);
 	virtual ~System();
 
-private:
-	number _box;
+	uint N();
+	void print_conf(std::string filename);
 
-	std::vector<vec3> _positions;
-	std::vector<vec3> _dipoles;
+	std::vector<vec3> positions;
+	std::vector<vec3> dipoles;
+
+	number box;
+	number alpha;
+
+private:
+	vec3 _random_vector_on_unit_sphere();
 };
 
 #endif /* SYSTEM_H_ */

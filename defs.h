@@ -14,14 +14,20 @@
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 
+#include <iostream>
+
 #ifdef EP_FLOAT
 typedef float number;
 using vec3 = Eigen::Vector3f;
+using cvec3 = Eigen::Vector3cf;
 using mat3 = Eigen::Matrix3f;
 #else
 typedef double number;
 using vec3 = Eigen::Vector3d;
+using cvec3 = Eigen::Vector3cd;
 using mat3 = Eigen::Matrix3d;
 #endif
+
+typedef unsigned int uint;
 
 #endif /* DEFS_H_ */

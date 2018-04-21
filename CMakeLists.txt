@@ -66,6 +66,7 @@ SET(exe_name Ewald_P3M)
 
 SET(Ewald_P3M_SOURCES
 	main.cpp
+	Ewald.cpp
 	System.cpp
 )
 
