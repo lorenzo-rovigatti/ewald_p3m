@@ -14,7 +14,7 @@
 
 struct System {
 public:
-	System(number my_box, int N);
+	System(number my_box, int N, number unnormalised_alpha, number myrcut);
 	virtual ~System();
 
 	uint N();
@@ -25,6 +25,7 @@ public:
 
 	number box;
 	number alpha;
+	number rcut, rcut_sqr;
 
 private:
 	vec3 _random_vector_on_unit_sphere();

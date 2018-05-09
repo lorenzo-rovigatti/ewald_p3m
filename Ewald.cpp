@@ -13,7 +13,7 @@
 
 Ewald::Ewald(System &syst) :
 				_syst(syst),
-				_kcut(6) {
+				_kcut(10) {
 
 	number reciprocal = 2 * M_PI / _syst.box;
 	for(int kx = -_kcut; kx <= _kcut; kx++) {
@@ -47,15 +47,18 @@ number Ewald::energy() {
 				r -= ((r.array() / _syst.box).round() * _syst.box).matrix();
 
 				number r_sqr = r.dot(r);
-				number r_mod = sqrt(r_sqr);
 
-				number erfc_part = erfc(_syst.alpha * r_mod) / r_mod;
-				number exp_part = M_2_SQRTPI * _syst.alpha * exp(-SQR(_syst.alpha) * r_sqr);
+				if(r_sqr <= _syst.rcut_sqr) {
+					number r_mod = sqrt(r_sqr);
 
-				vec3 &p_dip = _syst.dipoles[p];
-				vec3 &q_dip = _syst.dipoles[q];
+					number erfc_part = erfc(_syst.alpha * r_mod) / r_mod;
+					number exp_part = M_2_SQRTPI * _syst.alpha * exp(-SQR(_syst.alpha) * r_sqr);
 
-				E_r += (p_dip.dot(q_dip) * (erfc_part + exp_part) - p_dip.dot(r) * q_dip.dot(r) * (3. * erfc_part / r_sqr + (2. * SQR(_syst.alpha) + 3. / r_sqr) * exp_part)) / r_sqr;
+					vec3 &p_dip = _syst.dipoles[p];
+					vec3 &q_dip = _syst.dipoles[q];
+
+					E_r += (p_dip.dot(q_dip) * (erfc_part + exp_part) - p_dip.dot(r) * q_dip.dot(r) * (3. * erfc_part / r_sqr + (2. * SQR(_syst.alpha) + 3. / r_sqr) * exp_part)) / r_sqr;
+				}
 			}
 		}
 	}

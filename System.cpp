@@ -9,15 +9,31 @@
 
 #include <fstream>
 
-System::System(number mybox, int N) :
+using namespace std;
+
+System::System(number mybox, int N, number unnormalised_alpha, number myrcut) :
 				box(mybox),
-				alpha(2.0) {
+				alpha(unnormalised_alpha / mybox),
+				rcut(myrcut) {
 	positions.resize(N);
 	dipoles.resize(N);
+
 	for(int i = 0; i < N; i++) {
-		positions[i] = 0.5 * box * (vec3::Random() + vec3(1., 1., 1.));
+		bool overlap = false;
+		do {
+			positions[i] = 0.5 * box * (vec3::Random() + vec3(1., 1., 1.));
+			overlap = false;
+			for(int j = 0; j < i && !overlap; j++) {
+				vec3 r = positions[i] - positions[j];
+				r -= ((r.array() / box).round() * box).matrix();
+				if(r.norm() < 1.) overlap = true;
+			}
+		} while(overlap);
+
 		dipoles[i] = _random_vector_on_unit_sphere();
 	}
+
+	rcut_sqr = SQR(rcut);
 }
 
 System::~System() {

@@ -7,7 +7,7 @@
 int main(int argc, char *argv[]) {
 	srand48(1039098);
 
-	System syst(10., 4);
+	System syst(10., 100, 10.0, 10.0);
 	syst.print_conf("init.dat");
 	Ewald ewald(syst);
 
