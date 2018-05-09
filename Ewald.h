@@ -19,7 +19,7 @@ public:
 	Ewald(System &syst);
 	virtual ~Ewald();
 
-	number energy();
+	void print_energy();
 
 private:
 	System &_syst;

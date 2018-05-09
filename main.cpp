@@ -3,6 +3,7 @@
 
 #include "System.h"
 #include "Ewald.h"
+#include "P3M.h"
 
 int main(int argc, char *argv[]) {
 	srand48(1039098);
@@ -10,9 +11,15 @@ int main(int argc, char *argv[]) {
 	System syst(10., 100, 10.0, 10.0);
 	syst.print_conf("init.dat");
 	Ewald ewald(syst);
+	P3M p3m(syst, 8, 1);
 
-	number energy = ewald.energy();
-	std::cout << energy << " " << energy / syst.N() << std::endl;
+	std::cout << "EWALD" << std::endl;
+	ewald.print_energy();
+	std::cout << std::endl;
+
+	std::cout << "P3M" << std::endl;
+	p3m.print_energy();
+	std::cout << std::endl;
 
 	return 0;
 }

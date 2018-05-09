@@ -1,42 +1,53 @@
 /*
- * Ewald.cpp
+ * P3M.cpp
  *
- *  Created on: 20 Apr 2018
+ *  Created on: 9 May 2018
  *      Author: lorenzo
  */
 
-#include "Ewald.h"
+#include "P3M.h"
 
 #include "System.h"
 
-#include <cmath>
-
-Ewald::Ewald(System &syst) :
+P3M::P3M(System &syst, uint NM, uint assignment_OP) :
 				_syst(syst),
-				_kcut(10) {
+				_NM(NM),
+				_assignment_OP(assignment_OP) {
 
-	number reciprocal = 2 * M_PI / _syst.box;
-	for(int kx = -_kcut; kx <= _kcut; kx++) {
-		for(int ky = -_kcut; ky <= _kcut; ky++) {
-			for(int kz = -_kcut; kz <= _kcut; kz++) {
-				if(kx != 0 || ky != 0 || kz != 0) {
-					vec3 k_new = reciprocal * vec3(kx, ky, kz);
-					_k_vectors.emplace_back(k_new);
-
-					number k_sqr = k_new.dot(k_new);
-					number k_factor = 4 * M_PI * exp(-k_sqr / (4 * SQR(_syst.alpha))) / (2. * k_sqr * CUB(_syst.box));
-					_k_factors.emplace_back(k_factor);
-				}
-			}
+	_dipole_density[0] = _dipole_density[1] = _dipole_density[2] = nullptr;
+	uint partial = _NM;
+	while(partial > 1) {
+		if(partial % 2) {
+			std::cerr << "NM should be a power of two" << std::endl;
+			exit(1);
 		}
+		partial /= 2;
+	}
+
+	_lattice_spacing = _syst.box / _NM;
+
+	_fftw_plan = rfftw3d_create_plan(_NM, _NM, _NM, FFTW_FORWARD, FFTW_ESTIMATE);
+
+	for(int d = 0; d < 3; d++) {
+		_dipole_density[d] = new fftw_real[CUB(_NM)];
 	}
 }
 
-Ewald::~Ewald() {
+P3M::~P3M() {
+	for(int d = 0; d < 3; d++) {
+		if(_dipole_density[d] != nullptr) {
+			delete[] _dipole_density[d];
+		}
+	}
+
+	rfftwnd_destroy_plan(_fftw_plan);
+}
+
+void P3M::_assign_dipole_density() {
 
 }
 
-void Ewald::print_energy() {
+void P3M::print_energy() {
 	number E_self = -2. * _syst.N() * CUB(_syst.alpha) / (3. * sqrt(M_PI));
 
 	number E_r = 0.;
@@ -65,15 +76,6 @@ void Ewald::print_energy() {
 	E_r /= 2.;
 
 	number E_k = 0.;
-	for(uint k = 0; k < _k_vectors.size(); k++) {
-		std::complex<number> k_density(0., 0.);
-		for(uint p = 0; p < _syst.N(); p++) {
-			std::complex<number> cexp_arg(0, -_syst.positions[p].dot(_k_vectors[k]));
-			k_density += std::exp(cexp_arg) * _syst.dipoles[p].dot(_k_vectors[k]);
-		}
-
-		E_k += (k_density * std::conj(k_density)).real() * _k_factors[k];
-	}
 
 	number E_tot = E_r + E_k + E_self;
 

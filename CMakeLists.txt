@@ -67,7 +67,9 @@ SET(exe_name Ewald_P3M)
 SET(Ewald_P3M_SOURCES
 	main.cpp
 	Ewald.cpp
+	P3M.cpp
 	System.cpp
 )
 
 ADD_EXECUTABLE(${exe_name} ${Ewald_P3M_SOURCES})
+TARGET_LINK_LIBRARIES(${exe_name} rfftw fftw)
