@@ -17,20 +17,27 @@ class System;
 
 class P3M {
 public:
-	P3M(System &syst, uint NM, uint assignment_OP);
+	P3M(System &syst, int NM, int assignment_OP);
 	virtual ~P3M();
 
 	void print_energy();
 
 private:
 	void _assign_dipole_density();
+	int _cell_index(Eigen::Vector3i v);
+	std::pair<number, number> _G_factors(vec3 &k);
 
 	System &_syst;
-	uint _NM;
-	uint _assignment_OP;
-	number _lattice_spacing;
+	int _N_mesh_side;
+	int _assignment_OP;
+	bool _assignment_OP_is_odd;
+	number _mesh_spacing;
+	number _mesh_cell_volume;
+	int _N_mesh;
 
-	fftw_real *_dipole_density[3];
+	std::vector<fftw_real> _dipole_density[3];
+	std::vector<fftw_complex> _transformed_dipole_density[3];
+	std::vector<number> _green_function;
 	rfftwnd_plan _fftw_plan;
 };
 

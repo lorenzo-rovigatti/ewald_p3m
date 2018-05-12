@@ -28,6 +28,7 @@ using cvec3 = Eigen::Vector3cd;
 using mat3 = Eigen::Matrix3d;
 #endif
 
+using complex = std::complex<number>;
 typedef unsigned int uint;
 
 #endif /* DEFS_H_ */
