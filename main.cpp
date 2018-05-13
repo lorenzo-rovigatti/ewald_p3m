@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
 	System syst(10., 10, 10.0, 10.0);
 	syst.print_conf("init.dat");
 	Ewald ewald(syst);
-	P3M p3m(syst, 16, 1);
+	P3M p3m(syst, 8, 1);
 
 	std::cout << "EWALD" << std::endl;
 	ewald.print_energy();

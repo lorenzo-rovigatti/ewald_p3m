@@ -77,7 +77,6 @@ P3M::P3M(System &syst, int NM, int assignment_OP) :
 
 					cvec3 Dk = k * complex(0., 1.);
 					auto factors = _G_factors(k);
-
 					_green_function[r_idx] = factors.first / SQR(factors.second * Dk.dot(Dk).real());
 //					std::cout << factors.first / SQR(factors.second * Dk.dot(Dk)) << " " << k[0] << " " << k[1] << " " << k[2] << std::endl;
 				}
@@ -106,9 +105,9 @@ std::pair<number, number> P3M::_G_factors(vec3 &k) {
 				Uk *= (k_m[2] != 0.) ? sin(0.5 * k_m[2] * _mesh_spacing) / (0.5 * k_m[2] * _mesh_spacing) : 1;
 				Uk = pow(Uk, _assignment_OP);
 				cvec3 Dk_m = k_m * complex(0., 1.);
-				number k_sqr = k_m.dot(k_m);
-				number phik = 4. * M_PI / k_sqr * exp(-k_sqr / (4. * SQR(_syst.alpha)));
-				numerator_factor += SQR(Dk.dot(Dk_m).real()) * SQR(Uk) * phik;
+				number k_m_sqr = k_m.dot(k_m);
+				number phik_m = 4. * M_PI / k_m_sqr * exp(-k_m_sqr / (4. * SQR(_syst.alpha)));
+				numerator_factor += SQR(Dk.dot(Dk_m).real()) * SQR(Uk) * phik_m;
 				denominator_factor += SQR(Uk);
 			}
 		}
@@ -120,7 +119,6 @@ std::pair<number, number> P3M::_G_factors(vec3 &k) {
 void P3M::_assign_dipole_density() {
 	// reset the densities
 	for(int d = 0; d < 3; d++) {
-		_dipole_density[d];
 		std::fill(_dipole_density[d].begin(), _dipole_density[d].end(), 0.);
 	}
 
@@ -195,18 +193,18 @@ void P3M::print_energy() {
 	rfftwnd_one_real_to_complex(_fftw_plan, _dipole_density[1].data(), _transformed_dipole_density[1].data());
 	rfftwnd_one_real_to_complex(_fftw_plan, _dipole_density[2].data(), _transformed_dipole_density[2].data());
 
-	cvec3 ik;
+	cvec3 Dk;
 	cvec3 base_ik(complex(0., 2. * M_PI / _syst.box), complex(0., 2. * M_PI / _syst.box), complex(0., 2. * M_PI / _syst.box));
 	Eigen::Vector3i idx(0, 0, 0);
 	for(idx[0] = 0; idx[0] < _N_mesh_side; idx[0]++) {
-		ik[0] = base_ik[0];
-		ik[0] *= (idx[0] > _N_mesh_side / 2) ? _N_mesh_side - idx[0] : idx[0];
+		Dk[0] = base_ik[0];
+		Dk[0] *= (idx[0] > _N_mesh_side / 2) ? _N_mesh_side - idx[0] : idx[0];
 		for(idx[1] = 0; idx[1] < _N_mesh_side; idx[1]++) {
-			ik[1] = base_ik[1];
-			ik[1] *= (idx[1] > _N_mesh_side / 2) ? _N_mesh_side - idx[1] : idx[1];
+			Dk[1] = base_ik[1];
+			Dk[1] *= (idx[1] > _N_mesh_side / 2) ? _N_mesh_side - idx[1] : idx[1];
 			for(idx[2] = 0; idx[2] < _N_mesh_side; idx[2]++) {
-				ik[2] = base_ik[2];
-				ik[2] *= (idx[2] > _N_mesh_side / 2) ? _N_mesh_side - idx[2] : idx[2];
+				Dk[2] = base_ik[2];
+				Dk[2] *= (idx[2] > _N_mesh_side / 2) ? _N_mesh_side - idx[2] : idx[2];
 
 				if(idx[0] != 0 && idx[1] != 0 && idx[2] != 0) {
 					int r_idx;
@@ -229,8 +227,11 @@ void P3M::print_energy() {
 					dipole_density_k[1].imag(_transformed_dipole_density[1][r_idx].im);
 					dipole_density_k[2].real(_transformed_dipole_density[2][r_idx].re);
 					dipole_density_k[2].imag(_transformed_dipole_density[2][r_idx].im);
+					dipole_density_k[0] *= _mesh_cell_volume;
+					dipole_density_k[1] *= _mesh_cell_volume;
+					dipole_density_k[2] *= _mesh_cell_volume;
 
-					E_k += std::norm(dipole_density_k.dot(ik)) * _green_function[r_idx];
+					E_k += std::norm(dipole_density_k.dot(Dk)) * _green_function[r_idx];
 				}
 			}
 		}
