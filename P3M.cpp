@@ -54,13 +54,13 @@ P3M::P3M(System &syst, int NM, int assignment_OP) :
 	Eigen::Vector3i idx(0, 0, 0);
 	for(idx[0] = 0; idx[0] < _N_mesh_side; idx[0]++) {
 		k[0] = base_ik[0];
-		k[0] *= (idx[0] > _N_mesh_side / 2) ? _N_mesh_side - idx[0] : idx[0];
+		k[0] *= (idx[0] > _N_mesh_side / 2) ? idx[0] - _N_mesh_side : idx[0];
 		for(idx[1] = 0; idx[1] < _N_mesh_side; idx[1]++) {
 			k[1] = base_ik[1];
-			k[1] *= (idx[1] > _N_mesh_side / 2) ? _N_mesh_side - idx[1] : idx[1];
+			k[1] *= (idx[1] > _N_mesh_side / 2) ? idx[1] - _N_mesh_side : idx[1];
 			for(idx[2] = 0; idx[2] < _N_mesh_side; idx[2]++) {
 				k[2] = base_ik[2];
-				k[2] *= (idx[2] > _N_mesh_side / 2) ? _N_mesh_side - idx[2] : idx[2];
+				k[2] *= (idx[2] > _N_mesh_side / 2) ? idx[2] - _N_mesh_side : idx[2];
 
 				if(idx[0] != 0 && idx[1] != 0 && idx[2] != 0) {
 					int r_idx;
@@ -68,7 +68,7 @@ P3M::P3M(System &syst, int NM, int assignment_OP) :
 						Eigen::Vector3i new_idx(idx);
 						new_idx[0] = (idx[0] > _N_mesh_side / 2) ? idx[0] : _N_mesh_side - idx[0];
 						new_idx[1] = (idx[1] > _N_mesh_side / 2) ? idx[1] : _N_mesh_side - idx[1];
-						new_idx[2] = idx[2];
+						new_idx[2] = _N_mesh_side - idx[2];
 						r_idx = _cell_index(new_idx);
 					}
 					else {
@@ -78,7 +78,7 @@ P3M::P3M(System &syst, int NM, int assignment_OP) :
 					cvec3 Dk = k * complex(0., 1.);
 					auto factors = _G_factors(k);
 					_green_function[r_idx] = factors.first / SQR(factors.second * Dk.dot(Dk).real());
-//					std::cout << factors.first / SQR(factors.second * Dk.dot(Dk)) << " " << k[0] << " " << k[1] << " " << k[2] << std::endl;
+//					_green_function[r_idx] = 1.;
 				}
 			}
 		}
@@ -130,7 +130,8 @@ void P3M::_assign_dipole_density() {
 		vec3 reference_coords;
 		Eigen::Vector3i closest_mesh_point;
 		if(_assignment_OP_is_odd) {
-			closest_mesh_point = normalised_coords.array().round().cast<int>();
+			vec3 cmp = normalised_coords.array().round();
+			closest_mesh_point = cmp.cast<int>();
 			reference_coords = closest_mesh_point.cast<number>() * _mesh_spacing;
 		}
 
@@ -194,17 +195,17 @@ void P3M::print_energy() {
 	rfftwnd_one_real_to_complex(_fftw_plan, _dipole_density[2].data(), _transformed_dipole_density[2].data());
 
 	cvec3 Dk;
-	cvec3 base_ik(complex(0., 2. * M_PI / _syst.box), complex(0., 2. * M_PI / _syst.box), complex(0., 2. * M_PI / _syst.box));
+	cvec3 base_ik = complex(0., 2. * M_PI / _syst.box) * vec3(1., 1., 1.);
 	Eigen::Vector3i idx(0, 0, 0);
 	for(idx[0] = 0; idx[0] < _N_mesh_side; idx[0]++) {
 		Dk[0] = base_ik[0];
-		Dk[0] *= (idx[0] > _N_mesh_side / 2) ? _N_mesh_side - idx[0] : idx[0];
+		Dk[0] *= (idx[0] > _N_mesh_side / 2) ? idx[0] - _N_mesh_side : idx[0];
 		for(idx[1] = 0; idx[1] < _N_mesh_side; idx[1]++) {
 			Dk[1] = base_ik[1];
-			Dk[1] *= (idx[1] > _N_mesh_side / 2) ? _N_mesh_side - idx[1] : idx[1];
+			Dk[1] *= (idx[1] > _N_mesh_side / 2) ? idx[1] - _N_mesh_side : idx[1];
 			for(idx[2] = 0; idx[2] < _N_mesh_side; idx[2]++) {
 				Dk[2] = base_ik[2];
-				Dk[2] *= (idx[2] > _N_mesh_side / 2) ? _N_mesh_side - idx[2] : idx[2];
+				Dk[2] *= (idx[2] > _N_mesh_side / 2) ? idx[2] - _N_mesh_side : idx[2];
 
 				if(idx[0] != 0 && idx[1] != 0 && idx[2] != 0) {
 					int r_idx;
@@ -212,7 +213,7 @@ void P3M::print_energy() {
 						Eigen::Vector3i new_idx(idx);
 						new_idx[0] = (idx[0] > _N_mesh_side / 2) ? idx[0] : _N_mesh_side - idx[0];
 						new_idx[1] = (idx[1] > _N_mesh_side / 2) ? idx[1] : _N_mesh_side - idx[1];
-						new_idx[2] = idx[2];
+						new_idx[2] = _N_mesh_side - idx[2];
 						r_idx = _cell_index(new_idx);
 					}
 					else {
@@ -227,9 +228,7 @@ void P3M::print_energy() {
 					dipole_density_k[1].imag(_transformed_dipole_density[1][r_idx].im);
 					dipole_density_k[2].real(_transformed_dipole_density[2][r_idx].re);
 					dipole_density_k[2].imag(_transformed_dipole_density[2][r_idx].im);
-					dipole_density_k[0] *= _mesh_cell_volume;
-					dipole_density_k[1] *= _mesh_cell_volume;
-					dipole_density_k[2] *= _mesh_cell_volume;
+					dipole_density_k *= _mesh_cell_volume;
 
 					E_k += std::norm(dipole_density_k.dot(Dk)) * _green_function[r_idx];
 				}
