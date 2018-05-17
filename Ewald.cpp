@@ -13,7 +13,7 @@
 
 Ewald::Ewald(System &syst) :
 				_syst(syst),
-				_kcut(10) {
+				_kcut(20) {
 
 	number reciprocal = 2 * M_PI / _syst.box;
 	for(int kx = -_kcut; kx <= _kcut; kx++) {

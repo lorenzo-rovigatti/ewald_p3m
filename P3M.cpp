@@ -49,6 +49,8 @@ P3M::P3M(System &syst, int NM, int assignment_OP) :
 
 	_green_function.resize(_N_mesh);
 
+	_E_self_per_particle = -2. * CUB(_syst.alpha) / (3. * sqrt(M_PI));
+	_E_corr_per_particle = 0.;
 	vec3 k;
 	vec3 base_ik(2. * M_PI / _syst.box, 2. * M_PI / _syst.box, 2. * M_PI / _syst.box);
 	Eigen::Vector3i idx(0, 0, 0);
@@ -78,11 +80,18 @@ P3M::P3M(System &syst, int NM, int assignment_OP) :
 					cvec3 Dk = k * complex(0., 1.);
 					auto factors = _G_factors(k);
 					_green_function[r_idx] = factors.first / SQR(factors.second * Dk.dot(Dk).real());
-//					_green_function[r_idx] = 1.;
+
+					_E_corr_per_particle += -k.dot(k) * _green_function[r_idx] * factors.second;
 				}
 			}
 		}
 	}
+
+	_E_corr_per_particle /= 6. * CUB(_syst.box);
+	_E_corr_per_particle += 2. * M_PI / (3. * CUB(_syst.box)) + _E_self_per_particle;
+	// E_corr is defined as - Delta U in the Cerda paper, meaning that we need to change the
+	// sign of what we have computed till now, which is essentially Delta U
+	_E_corr_per_particle *= -1;
 }
 
 P3M::~P3M() {
@@ -131,7 +140,8 @@ void P3M::_assign_dipole_density() {
 		Eigen::Vector3i closest_mesh_point;
 		if(_assignment_OP_is_odd) {
 			vec3 cmp = normalised_coords.array().round();
-			closest_mesh_point = cmp.cast<int>();
+			// we once again use PBC to map the last edges on the first ones
+			closest_mesh_point = cmp.cast<int>().unaryExpr([&](const int x) { return x % _N_mesh_side; });
 			reference_coords = closest_mesh_point.cast<number>() * _mesh_spacing;
 		}
 
@@ -161,7 +171,8 @@ int P3M::_cell_index(Eigen::Vector3i v) {
 }
 
 void P3M::print_energy() {
-	number E_self = -2. * _syst.N() * CUB(_syst.alpha) / (3. * sqrt(M_PI));
+	number E_self = _syst.N() * _E_self_per_particle;
+	number E_corr = _syst.N() * _E_corr_per_particle;
 
 	number E_r = 0.;
 	for(int p = 0; p < _syst.N(); p++) {
@@ -237,10 +248,11 @@ void P3M::print_energy() {
 	}
 	E_k /= 2 * CUB(_syst.box);
 
-	number E_tot = E_r + E_k + E_self;
+	number E_tot = E_r + E_k + E_self + E_corr;
 
 	std::cout << "Real part: " << E_r << std::endl;
 	std::cout << "Reciprocal part: " << E_k << std::endl;
 	std::cout << "Self part: " << E_self << std::endl;
+	std::cout << "P3M correction: " << E_corr << std::endl;
 	std::cout << "Total: " << E_tot << " " << E_tot / _syst.N() << std::endl;
 }

@@ -39,6 +39,8 @@ private:
 	std::vector<fftw_complex> _transformed_dipole_density[3];
 	std::vector<number> _green_function;
 	rfftwnd_plan _fftw_plan;
+	number _E_corr_per_particle;
+	number _E_self_per_particle;
 };
 
 #endif /* P3M_H_ */
