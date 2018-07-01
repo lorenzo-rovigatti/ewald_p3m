@@ -8,10 +8,10 @@
 int main(int argc, char *argv[]) {
 	srand48(1039098);
 
-	System syst(10., 10, 10.0, 10.0);
+	System syst(10., 1, 10.0, 10.0);
 	syst.print_conf("init.dat");
 	Ewald ewald(syst);
-	P3M p3m(syst, 8, 1);
+	P3M p3m(syst, 4, 1);
 
 	std::cout << "EWALD" << std::endl;
 	ewald.print_energy();

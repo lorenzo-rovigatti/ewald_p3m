@@ -64,12 +64,12 @@ P3M::P3M(System &syst, int NM, int assignment_OP) :
 				k[2] = base_ik[2];
 				k[2] *= (idx[2] > _N_mesh_side / 2) ? idx[2] - _N_mesh_side : idx[2];
 
-				if(idx[0] != 0 && idx[1] != 0 && idx[2] != 0) {
+				if(!(idx[0] == 0 && idx[1] == 0 && idx[2] == 0)) {
 					int r_idx;
 					if(idx[2] > _N_mesh_side / 2) {
 						Eigen::Vector3i new_idx(idx);
-						new_idx[0] = (idx[0] > _N_mesh_side / 2) ? idx[0] : _N_mesh_side - idx[0];
-						new_idx[1] = (idx[1] > _N_mesh_side / 2) ? idx[1] : _N_mesh_side - idx[1];
+						new_idx[0] = (idx[0] > _N_mesh_side / 2) ? _N_mesh_side - idx[0] : idx[0];
+						new_idx[1] = (idx[1] > _N_mesh_side / 2) ? _N_mesh_side - idx[1] : idx[1];
 						new_idx[2] = _N_mesh_side - idx[2];
 						r_idx = _cell_index(new_idx);
 					}
@@ -82,12 +82,17 @@ P3M::P3M(System &syst, int NM, int assignment_OP) :
 					_green_function[r_idx] = factors.first / SQR(factors.second * Dk.dot(Dk).real());
 
 					_E_corr_per_particle += -k.dot(k) * _green_function[r_idx] * factors.second;
+
+					//printf("U_sum %d %d %d = %lf\n", idx[0], idx[1], idx[2], factors.second);
 				}
 			}
 		}
 	}
 
 	_E_corr_per_particle /= 6. * CUB(_syst.box);
+
+	std::cout << "Average dipolar energy: " << _E_corr_per_particle * _syst.N() * CUB(_syst.box) << std::endl;;
+
 	_E_corr_per_particle += 2. * M_PI / (3. * CUB(_syst.box)) + _E_self_per_particle;
 	// E_corr is defined as - Delta U in the Cerda paper, meaning that we need to change the
 	// sign of what we have computed till now, which is essentially Delta U
@@ -98,21 +103,48 @@ P3M::~P3M() {
 	rfftwnd_destroy_plan(_fftw_plan);
 }
 
+number sinc(number arg) {
+#define epsi 0.1
+
+#define c2 -0.1666666666667e-0
+#define c4  0.8333333333333e-2
+#define c6 -0.1984126984127e-3
+#define c8  0.2755731922399e-5
+
+	if(fabs(arg) > epsi) {
+		return sin(arg) / arg;
+	}
+	else {
+		number arg_sqr = SQR(arg);
+		return 1.0 + arg_sqr * (c2 + arg_sqr * (c4 + arg_sqr * (c6 + arg_sqr * c8)));
+	}
+}
+
 std::pair<number, number> P3M::_G_factors(vec3 &k) {
 	number denominator_factor = 0;
 	number numerator_factor = 0.;
+	// taken from espresso
+	int limit = 5;
 
 	cvec3 Dk = k * complex(0., 1.);
 	Eigen::Vector3i idx;
-	for(idx[0] = -_N_mesh_side / 2; idx[0] < _N_mesh_side / 2; idx[0]++) {
-		for(idx[1] = -_N_mesh_side / 2; idx[1] < _N_mesh_side / 2; idx[1]++) {
-			for(idx[2] = -_N_mesh_side / 2; idx[2] < _N_mesh_side / 2; idx[2]++) {
-				// _syst.box or _mesh_spacing? See Cerda et al just after Eq. 30
-				vec3 k_m = k + 2. * M_PI / _mesh_spacing * idx.cast<number>();
-				number Uk = (k_m[0] != 0.) ? sin(0.5 * k_m[0] * _mesh_spacing) / (0.5 * k_m[0] * _mesh_spacing) : 1;
-				Uk *= (k_m[1] != 0.) ? sin(0.5 * k_m[1] * _mesh_spacing) / (0.5 * k_m[1] * _mesh_spacing) : 1;
-				Uk *= (k_m[2] != 0.) ? sin(0.5 * k_m[2] * _mesh_spacing) / (0.5 * k_m[2] * _mesh_spacing) : 1;
+	for(idx[0] = -limit; idx[0] <= limit; idx[0]++) {
+		number k_m_x = k[0] + 2. * M_PI / _mesh_spacing * idx[0];
+		number Uk_1 = sinc(0.5 * k_m_x * _mesh_spacing);
+
+		for(idx[1] = -limit; idx[1] <= limit; idx[1]++) {
+			number k_m_y = k[1] + 2. * M_PI / _mesh_spacing * idx[1];
+			number Uk_2 = Uk_1 * sinc(0.5 * k_m_y * _mesh_spacing);
+
+			for(idx[2] = -limit; idx[2] <= limit; idx[2]++) {
+				number k_m_z = k[2] + 2. * M_PI / _mesh_spacing * idx[2];
+				number Uk = Uk_2 * sinc(0.5 * k_m_z * _mesh_spacing);
+
+//				printf("%e %e %e -- %e\n", Uk_1, Uk_2, Uk, 0.5 * k_m_x * _mesh_spacing);
+//				exit(1);
+
 				Uk = pow(Uk, _assignment_OP);
+				vec3 k_m(k_m_x, k_m_y, k_m_z);
 				cvec3 Dk_m = k_m * complex(0., 1.);
 				number k_m_sqr = k_m.dot(k_m);
 				number phik_m = 4. * M_PI / k_m_sqr * exp(-k_m_sqr / (4. * SQR(_syst.alpha)));
@@ -218,12 +250,12 @@ void P3M::print_energy() {
 				Dk[2] = base_ik[2];
 				Dk[2] *= (idx[2] > _N_mesh_side / 2) ? idx[2] - _N_mesh_side : idx[2];
 
-				if(idx[0] != 0 && idx[1] != 0 && idx[2] != 0) {
+				if(!(idx[0] == 0 && idx[1] == 0 && idx[2] == 0)) {
 					int r_idx;
 					if(idx[2] > _N_mesh_side / 2) {
 						Eigen::Vector3i new_idx(idx);
-						new_idx[0] = (idx[0] > _N_mesh_side / 2) ? idx[0] : _N_mesh_side - idx[0];
-						new_idx[1] = (idx[1] > _N_mesh_side / 2) ? idx[1] : _N_mesh_side - idx[1];
+						new_idx[0] = (idx[0] > _N_mesh_side / 2) ? _N_mesh_side - idx[0] : idx[0];
+						new_idx[1] = (idx[1] > _N_mesh_side / 2) ? _N_mesh_side - idx[1] : idx[1];
 						new_idx[2] = _N_mesh_side - idx[2];
 						r_idx = _cell_index(new_idx);
 					}
